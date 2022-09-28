@@ -435,7 +435,7 @@ let networkPercentileValue = $networkPercentile;
 let diskPercentileValue = $diskPercentile;
 let rightSizeRecommendationId = '$rightSizeRecommendationId';
 let billingInterval = 30d;
-let etime = todatetime(toscalar($consumptionTableName | summarize max(UsageDate_t))); 
+let etime = todatetime(toscalar($consumptionTableName | where UsageDate_t < now() | summarize max(UsageDate_t))); 
 let stime = etime-billingInterval; 
 let RightSizeInstanceIds = materialize($advisorTableName 
 | where todatetime(TimeGenerated) > ago(advisorInterval) and Category == 'Cost' and RecommendationTypeId_g == rightSizeRecommendationId
@@ -600,7 +600,7 @@ foreach ($result in $results) {
     $fitScore = 5
     $hasCpuRamPerfMetrics = $false
 
-    if ($additionalInfoDictionary.targetSku) {
+    if ($additionalInfoDictionary.targetSku -and $result.RecommendationTypeId_g -eq $rightSizeRecommendationId) {
         $additionalInfoDictionary["SupportsDataDisksCount"] = "true"
         $additionalInfoDictionary["DataDiskCount"] = "$($result.DataDiskCount_s)"
         $additionalInfoDictionary["SupportsNICCount"] = "true"
@@ -791,7 +791,14 @@ foreach ($result in $results) {
         }
         else
         {
-            $savingsMonthly = [double] $result.Last30DaysCost 
+            if ($result.RecommendationTypeId_g -eq $rightSizeRecommendationId)
+            {
+                $savingsMonthly = [double] $result.Last30DaysCost 
+            }
+            else
+            {
+                $savingsMonthly = 0 # unknown
+            }
         }            
     }
 
